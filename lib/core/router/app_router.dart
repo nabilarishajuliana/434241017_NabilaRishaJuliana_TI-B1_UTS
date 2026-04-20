@@ -7,6 +7,7 @@ import '../../presentation/screens/auth/register_screen.dart';
 import '../../presentation/screens/auth/reset_password_screen.dart';
 import '../../presentation/screens/ticket/create_ticket_screen.dart';
 import '../../presentation/screens/ticket/detail_ticket_screen.dart';
+import '../../presentation/screens/notification/notification_screen.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -15,7 +16,8 @@ class AppRouter {
       final session = Supabase.instance.client.auth.currentSession;
       final isLoggedIn = session != null;
       final isSplash = state.matchedLocation == '/splash';
-      final isAuthRoute = state.matchedLocation == '/login' ||
+      final isAuthRoute =
+          state.matchedLocation == '/login' ||
           state.matchedLocation == '/register' ||
           state.matchedLocation == '/reset-password';
 
@@ -25,18 +27,9 @@ class AppRouter {
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/splash',
-        builder: (c, s) => const SplashScreen(),
-      ),
-      GoRoute(
-        path: '/login',
-        builder: (c, s) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/register',
-        builder: (c, s) => const RegisterScreen(),
-      ),
+      GoRoute(path: '/splash', builder: (c, s) => const SplashScreen()),
+      GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
+      GoRoute(path: '/register', builder: (c, s) => const RegisterScreen()),
       GoRoute(
         path: '/reset-password',
         builder: (c, s) => const ResetPasswordScreen(),
@@ -64,10 +57,13 @@ class AppRouter {
         builder: (c, s) => const CreateTicketScreen(),
       ),
       GoRoute(
+        path: '/notifications',
+        builder: (c, s) => const NotificationScreen(),
+      ),
+      GoRoute(
         path: '/tickets/:id',
-        builder: (c, s) => DetailTicketScreen(
-          ticketId: s.pathParameters['id']!,
-        ),
+        builder: (c, s) =>
+            DetailTicketScreen(ticketId: s.pathParameters['id']!),
       ),
     ],
   );

@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/ticket_repository.dart';
+import '../notification/notification_screen.dart';
+import '../../../data/repositories/notification_repository.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -14,6 +16,8 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final _authRepository = AuthRepository();
   final _ticketRepository = TicketRepository();
+  int _unreadCount = 0;
+  final _notificationRepository = NotificationRepository();
 
   Map<String, dynamic>? _userProfile;
   List<Map<String, dynamic>> _ticketStats = [];
@@ -29,6 +33,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await _notificationRepository.getUnreadCount();
+      if (mounted) setState(() => _unreadCount = count);
+    } catch (e) {
+      // ignore
+    }
   }
 
   Future<void> _loadData() async {
@@ -44,12 +58,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
 
       // Hitung per status
-      final stats = {
-        'open': 0,
-        'in_progress': 0,
-        'resolved': 0,
-        'closed': 0,
-      };
+      final stats = {'open': 0, 'in_progress': 0, 'resolved': 0, 'closed': 0};
       for (final ticket in tickets) {
         final status = ticket.status;
         if (stats.containsKey(status)) {
@@ -89,9 +98,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -105,9 +114,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   String _getRoleLabel(String role) {
     switch (role) {
-      case 'admin': return 'Admin';
-      case 'helpdesk': return 'Helpdesk';
-      default: return 'User';
+      case 'admin':
+        return 'Admin';
+      case 'helpdesk':
+        return 'Helpdesk';
+      default:
+        return 'User';
     }
   }
 
@@ -115,9 +127,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-  title: const Text('Dashboard'),
-  automaticallyImplyLeading: false,
-),
+        title: const Text('Dashboard'),
+        automaticallyImplyLeading: false,
+        actions: [
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationScreen(),
+                    ),
+                  );
+                  if (mounted) {
+                    final count = await _notificationRepository
+                        .getUnreadCount();
+                    setState(() => _unreadCount = count);
+                  }
+                },
+              ),
+              if (_unreadCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '$_unreadCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -227,11 +281,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.5,
-                      ),
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 1.5,
+                          ),
                       itemCount: _ticketStats.length,
                       itemBuilder: (context, index) {
                         final stat = _ticketStats[index];
@@ -241,8 +295,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             color: (stat['color'] as Color).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color:
-                                  (stat['color'] as Color).withOpacity(0.3),
+                              color: (stat['color'] as Color).withOpacity(0.3),
                             ),
                           ),
                           child: Column(
@@ -354,10 +407,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
             ),

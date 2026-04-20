@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/repositories/auth_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../main.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,11 +16,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _authRepository = AuthRepository();
   Map<String, dynamic>? _profile;
   bool _isLoading = true;
+  bool _isDarkMode = false;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _loadTheme();
   }
 
   Future<void> _loadProfile() async {
@@ -28,9 +32,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() => _profile = profile);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -52,7 +56,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () async {
               Navigator.pop(context);
               await _authRepository.logout();
-              if (mounted) context.go('/login');
+              if (mounted) {
+                context.go('/login');
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Logout'),
@@ -62,19 +68,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isDarkMode = prefs.getBool('isDarkMode') ?? false;
+    });
+  }
+
+  Future<void> _toggleTheme(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isDarkMode', value);
+    setState(() => _isDarkMode = value);
+    themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
+  }
+
   String _getRoleLabel(String role) {
     switch (role) {
-      case 'admin': return 'Admin';
-      case 'helpdesk': return 'Helpdesk';
-      default: return 'User';
+      case 'admin':
+        return 'Admin';
+      case 'helpdesk':
+        return 'Helpdesk';
+      default:
+        return 'User';
     }
   }
 
   Color _getRoleColor(String role) {
     switch (role) {
-      case 'admin': return Colors.red;
-      case 'helpdesk': return Colors.orange;
-      default: return Colors.blue;
+      case 'admin':
+        return Colors.red;
+      case 'helpdesk':
+        return Colors.orange;
+      default:
+        return Colors.blue;
     }
   }
 
@@ -165,6 +191,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           }()
                         : '-',
                   ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.dark_mode_outlined,
+                          color: Color(0xFF2563EB),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Text(
+                            'Dark Mode',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        Switch(
+                          value: _isDarkMode,
+                          onChanged: _toggleTheme,
+                          activeColor: const Color(0xFF2563EB),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 32),
 
                   // Logout Button
@@ -212,17 +269,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade500,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
               ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
             ],
           ),
         ],
