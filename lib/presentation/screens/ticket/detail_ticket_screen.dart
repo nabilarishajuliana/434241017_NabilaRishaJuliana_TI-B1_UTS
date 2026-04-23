@@ -250,10 +250,10 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
   return Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: Colors.grey.shade50,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.grey.shade200),
-    ),
+  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+  borderRadius: BorderRadius.circular(12),
+  border: Border.all(color: Theme.of(context).dividerColor),
+),
     child: Row(
       children: List.generate(steps.length, (index) {
         final step = steps[index];
@@ -464,9 +464,9 @@ const SizedBox(height: 16),
                               width: double.infinity,
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
+  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+  borderRadius: BorderRadius.circular(8),
+),
                               child: Text(_ticket!.deskripsi),
                             ),
                             const SizedBox(height: 16),
@@ -537,8 +537,8 @@ const SizedBox(height: 16),
                                       ),
                                       decoration: BoxDecoration(
                                         color: isMe
-                                            ? const Color(0xFF2563EB)
-                                            : Colors.grey.shade200,
+    ? const Color(0xFF2563EB)
+    : Theme.of(context).colorScheme.surfaceVariant,
                                         borderRadius:
                                             BorderRadius.circular(12),
                                       ),
@@ -562,8 +562,8 @@ const SizedBox(height: 16),
                                             comment.isi,
                                             style: TextStyle(
                                               color: isMe
-                                                  ? Colors.white
-                                                  : Colors.black,
+    ? Colors.white
+    : Theme.of(context).colorScheme.onSurface,
                                             ),
                                           ),
                                         ],
