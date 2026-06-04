@@ -17,7 +17,7 @@ void main() async {
   );
 
   // Load tema tersimpan
-  final prefs = await SharedPreferences.getInstance();
+  final prefs = await SharedPreferences.getInstance(); // untuk nyimpan histori theme yg dipakai (light/dark)
   final isDark = prefs.getBool('isDarkMode') ?? false;
   themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
 

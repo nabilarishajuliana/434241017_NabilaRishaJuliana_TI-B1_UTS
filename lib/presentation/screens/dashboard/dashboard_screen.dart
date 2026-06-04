@@ -51,9 +51,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final profile = await _authRepository.getCurrentUserProfile();
 
       List tickets;
-      if (_userRole == 'admin' || _userRole == 'helpdesk') {
+      if (_userRole == 'admin') {
+        // Admin lihat statistik semua tiket
         tickets = await _ticketRepository.getAllTickets();
+      } else if (_userRole == 'helpdesk') {
+        // Helpdesk lihat statistik tiket yang di-assign ke dia
+        tickets = await _ticketRepository.getAssignedTickets();
       } else {
+        // User lihat statistik tiket miliknya
         tickets = await _ticketRepository.getMyTickets();
       }
 

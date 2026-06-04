@@ -13,10 +13,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authRepository = AuthRepository();
+  final _authRepository = AuthRepository(); 
 
-  bool _isLoading = false;
-  bool _obscurePassword = true;
+  bool _isLoading = false; // ini loader
+  bool _obscurePassword = true; // ini buat hide pass
 
   @override
   void dispose() {
@@ -25,13 +25,13 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _login() async { // logika login
+    if (!_formKey.currentState!.validate()) return; // untuk validasi inputan
 
-    setState(() => _isLoading = true);
+    setState(() => _isLoading = true); 
 
     try {
-      await _authRepository.login(
+      await _authRepository.login( // ngirim ke ke auth repo
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -51,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  @override
+  @override // tampilannya
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
@@ -141,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
-                            ? Icons.visibility_off
+                            ? Icons.visibility_off // ini untuk logo mata password
                             : Icons.visibility,
                       ),
                       onPressed: () {

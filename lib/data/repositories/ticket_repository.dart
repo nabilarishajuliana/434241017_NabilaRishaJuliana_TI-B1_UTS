@@ -12,7 +12,7 @@ class TicketRepository {
     final response = await _supabase
         .from('tickets')
         .select('*, profiles!tickets_user_id_fkey(*)')
-        .eq('user_id', userId)
+        .eq('user_id', userId) 
         .order('created_at', ascending: false);
 
     return (response as List)
@@ -31,6 +31,20 @@ class TicketRepository {
         .map((e) => TicketModel.fromJson(e))
         .toList();
   }
+
+  // AMBIL TIKET YANG DI-ASSIGN KE HELPDESK YANG LOGIN
+Future<List<TicketModel>> getAssignedTickets() async {
+  final userId = _supabase.auth.currentUser!.id;
+  final response = await _supabase
+      .from('tickets')
+      .select('*, profiles!tickets_user_id_fkey(*)')
+      .eq('assigned_to', userId) // hanya tiket yang assigned_to = id helpdesk ini
+      .order('created_at', ascending: false);
+
+  return (response as List)
+      .map((e) => TicketModel.fromJson(e))
+      .toList();
+}
 
   // AMBIL DETAIL TIKET
   Future<TicketModel> getTicketDetail(String ticketId) async {
