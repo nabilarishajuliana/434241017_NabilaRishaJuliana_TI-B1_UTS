@@ -8,10 +8,32 @@ class AuthRepository {
     required String email,
     required String password,
   }) async {
-    return await _supabase.auth.signInWithPassword(
+    // Login dulu ke Supabase Auth
+    final response = await _supabase.auth.signInWithPassword(
       email: email,
       password: password,
     );
+
+    // Setelah login berhasil, cek apakah akun aktif
+    if (response.user != null) {
+      final profile = await _supabase
+          .from('profiles')
+          .select('is_active')
+          .eq('id', response.user!.id)
+          .single();
+
+      final isActive = profile['is_active'] ?? true;
+
+      if (!isActive) {
+        // Langsung logout kalau tidak aktif
+        await _supabase.auth.signOut();
+        throw Exception(
+          'Akun kamu telah dinonaktifkan. Hubungi admin untuk informasi lebih lanjut.',
+        );
+      }
+    }
+
+    return response;
   }
 
   // REGISTER
@@ -24,10 +46,7 @@ class AuthRepository {
     return await _supabase.auth.signUp(
       email: email,
       password: password,
-      data: {
-        'nama': nama,
-        'role': role,
-      },
+      data: {'nama': nama, 'role': role},
     );
   }
 
@@ -58,5 +77,26 @@ class AuthRepository {
         .single();
 
     return response;
+  }
+
+  // AMBIL SEMUA USER (KHUSUS ADMIN)
+  Future<List<Map<String, dynamic>>> getAllUsers() async {
+    final response = await _supabase
+        .from('profiles')
+        .select()
+        .order('created_at', ascending: false);
+
+    return (response as List).cast<Map<String, dynamic>>();
+  }
+
+  // NON-AKTIFKAN / AKTIFKAN USER
+  Future<void> toggleUserActive({
+    required String userId,
+    required bool isActive,
+  }) async {
+    await _supabase
+        .from('profiles')
+        .update({'is_active': isActive})
+        .eq('id', userId);
   }
 }

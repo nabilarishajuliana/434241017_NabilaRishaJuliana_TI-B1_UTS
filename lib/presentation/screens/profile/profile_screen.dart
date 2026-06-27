@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/repositories/auth_repository.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../main.dart';
+import '../settings/settings_screen.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+// import '../../../main.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,13 +17,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _authRepository = AuthRepository();
   Map<String, dynamic>? _profile;
   bool _isLoading = true;
-  bool _isDarkMode = false;
+  // bool _isDarkMode = false;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
-    _loadTheme();
+    // _loadTheme();
   }
 
   Future<void> _loadProfile() async {
@@ -66,20 +67,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _isDarkMode = prefs.getBool('isDarkMode') ?? false;
-    });
-  }
-
-  Future<void> _toggleTheme(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isDarkMode', value);
-    setState(() => _isDarkMode = value);
-    themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
   }
 
   String _getRoleLabel(String role) {
@@ -191,37 +178,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           }()
                         : '-',
                   ),
+
+                  // Tambahkan ini sebelum const SizedBox(height: 32) sebelum tombol logout
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade200),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.dark_mode_outlined,
-                          color: Color(0xFF2563EB),
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SettingsScreen(),
                         ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Text(
-                            'Dark Mode',
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade200),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.settings_outlined,
+                            color: Color(0xFF2563EB),
                           ),
-                        ),
-                        Switch(
-                          value: _isDarkMode,
-                          onChanged: _toggleTheme,
-                          activeColor: const Color(0xFF2563EB),
-                        ),
-                      ],
+                          const SizedBox(width: 16),
+                          const Expanded(
+                            child: Text(
+                              'Pengaturan',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            color: Colors.grey.shade400,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+
                   const SizedBox(height: 32),
 
                   // Logout Button

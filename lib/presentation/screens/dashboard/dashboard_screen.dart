@@ -62,12 +62,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         tickets = await _ticketRepository.getMyTickets();
       }
 
-      // Hitung per status
+      // Hitung per status + hitung assigned
       final stats = {'open': 0, 'in_progress': 0, 'resolved': 0, 'closed': 0};
+      int assignedCount = 0;
+
       for (final ticket in tickets) {
         final status = ticket.status;
         if (stats.containsKey(status)) {
           stats[status] = stats[status]! + 1;
+        }
+        // Hitung tiket yang sudah di-assign
+        if (ticket.assignedTo != null) {
+          assignedCount++;
         }
       }
 
@@ -82,16 +88,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             'icon': Icons.fiber_new,
           },
           {
+            'label': 'Assigned',
+            'count': assignedCount,
+            'color': Colors.purple,
+            'icon': Icons.person_pin,
+          },
+          {
             'label': 'In Progress',
             'count': stats['in_progress'],
             'color': Colors.orange,
             'icon': Icons.sync,
-          },
-          {
-            'label': 'Resolved',
-            'count': stats['resolved'],
-            'color': Colors.green,
-            'icon': Icons.check_circle,
           },
           {
             'label': 'Closed',
@@ -352,15 +358,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: const Color(0xFF2563EB),
                       onTap: () => context.push('/tickets'),
                     ),
+                    // track tiket
                     const SizedBox(height: 12),
-                    if (_userRole == 'user')
-                      _buildMenuCard(
-                        icon: Icons.add_circle_outline,
-                        title: 'Buat Tiket Baru',
-                        subtitle: 'Laporkan masalah IT baru',
-                        color: Colors.green,
-                        onTap: () => context.push('/tickets/create'),
-                      ),
+                    _buildMenuCard(
+                      icon: Icons.track_changes,
+                      title: 'Tracking Tiket',
+                      subtitle: _userRole == 'user'
+                          ? 'Pantau progress tiket aktifmu'
+                          : 'Pantau semua tiket yang sedang berjalan',
+                      color: Colors.teal,
+                      onTap: () => context.push('/tracking'),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildMenuCard(
+                      icon: Icons.add_circle_outline,
+                      title: 'Buat Tiket Baru',
+                      subtitle: 'Laporkan masalah IT baru',
+                      color: Colors.green,
+                      onTap: () => context.push('/tickets/create'),
+                    ),
                     const SizedBox(height: 12),
                     _buildMenuCard(
                       icon: Icons.person_outline,
@@ -369,6 +385,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: Colors.purple,
                       onTap: () => context.push('/profile'),
                     ),
+                    // kelola pengguna
+                    const SizedBox(height: 12),
+                    if (_userRole == 'admin')
+                      _buildMenuCard(
+                        icon: Icons.people_outline,
+                        title: 'Kelola Pengguna',
+                        subtitle: 'Lihat dan kelola semua pengguna',
+                        color: Colors.purple,
+                        onTap: () => context.push('/admin/users'),
+                      ),
                   ],
                 ),
               ),

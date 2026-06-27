@@ -79,6 +79,68 @@ class _ListTicketScreenState extends State<ListTicketScreen> {
     });
   }
 
+  Widget _buildTicketCard(ticket) {
+  return Card(
+    margin: const EdgeInsets.only(bottom: 12),
+    child: ListTile(
+      contentPadding: const EdgeInsets.all(16),
+      title: Text(
+        ticket.judul,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 4),
+          Text(
+            ticket.deskripsi,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(ticket.status).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  _getStatusLabel(ticket.status),
+                  style: TextStyle(
+                    color: _getStatusColor(ticket.status),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${ticket.createdAt.day}/${ticket.createdAt.month}/${ticket.createdAt.year}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      onTap: () async {
+        await context.push('/tickets/${ticket.id}');
+        _loadTickets();
+      },
+    ),
+  );
+}
+
   Color _getStatusColor(String status) {
     switch (status) {
       case 'open':
@@ -116,15 +178,13 @@ class _ListTicketScreenState extends State<ListTicketScreen> {
         title: const Text('Daftar Tiket'),
         automaticallyImplyLeading: false,
       ),
-      floatingActionButton: _userRole == 'user'
-          ? FloatingActionButton(
-              onPressed: () async {
-                await context.push('/tickets/create');
-                _loadTickets();
-              },
-              child: const Icon(Icons.add),
-            )
-          : null,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await context.push('/tickets/create');
+          _loadTickets();
+        },
+        child: const Icon(Icons.add),
+      ),
       body: Column(
         children: [
           // Filter Chips
@@ -204,69 +264,96 @@ class _ListTicketScreenState extends State<ListTicketScreen> {
                       itemCount: _filteredTickets.length,
                       itemBuilder: (context, index) {
                         final ticket = _filteredTickets[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            title: Text(
-                              ticket.judul,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+
+                        // Bungkus dengan Dismissible khusus untuk Admin
+                        if (_userRole == 'admin') {
+                          return Dismissible(
+                            key: Key(ticket.id),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Text(
-                                  ticket.deskripsi,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: Colors.grey.shade600),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _getStatusColor(
-                                          ticket.status,
-                                        ).withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        _getStatusLabel(ticket.status),
-                                        style: TextStyle(
-                                          color: _getStatusColor(ticket.status),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.delete, color: Colors.white),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Hapus',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                    const Spacer(),
-                                    Text(
-                                      '${ticket.createdAt.day}/${ticket.createdAt.month}/${ticket.createdAt.year}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade500,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            confirmDismiss: (direction) async {
+                              return await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Hapus Tiket'),
+                                  content: Text(
+                                    'Hapus tiket "${ticket.judul}"? '
+                                    'Aksi ini tidak bisa dibatalkan!',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: const Text('Batal'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        foregroundColor: Colors.white,
                                       ),
+                                      child: const Text('Hapus'),
                                     ),
                                   ],
                                 ),
-                              ],
-                            ),
-                            onTap: () async {
-                              await context.push('/tickets/${ticket.id}');
-                              _loadTickets();
+                              );
                             },
-                          ),
-                        );
+                            onDismissed: (direction) async {
+                              try {
+                                await _ticketRepository.deleteTicket(ticket.id);
+                                _loadTickets();
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Tiket "${ticket.judul}" dihapus',
+                                      ),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Gagal hapus: ${e.toString()}',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: _buildTicketCard(ticket),
+                          );
+                        }
+
+                        return _buildTicketCard(ticket);
                       },
                     ),
                   ),

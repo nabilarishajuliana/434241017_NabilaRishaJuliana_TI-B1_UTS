@@ -45,10 +45,8 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final ticket =
-          await _ticketRepository.getTicketDetail(widget.ticketId);
-      final comments =
-          await _ticketRepository.getComments(widget.ticketId);
+      final ticket = await _ticketRepository.getTicketDetail(widget.ticketId);
+      final comments = await _ticketRepository.getComments(widget.ticketId);
 
       List<Map<String, dynamic>> helpdeskList = [];
       if (_userRole == 'admin') {
@@ -62,9 +60,9 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -84,9 +82,9 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
       await _loadData();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal kirim: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal kirim: ${e.toString()}')));
       }
     } finally {
       if (mounted) setState(() => _isSendingComment = false);
@@ -114,43 +112,41 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
           children: [
             const Text(
               'Update Status Tiket',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            ...statuses.map((status) => ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor:
-                        (status['color'] as Color).withOpacity(0.2),
-                    child: Icon(
-                      Icons.circle,
-                      color: status['color'] as Color,
-                      size: 12,
-                    ),
+            ...statuses.map(
+              (status) => ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: (status['color'] as Color).withOpacity(0.2),
+                  child: Icon(
+                    Icons.circle,
+                    color: status['color'] as Color,
+                    size: 12,
                   ),
-                  title: Text(status['label'] as String),
-                  trailing: _ticket?.status == status['value']
-                      ? const Icon(Icons.check, color: Colors.green)
-                      : null,
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await _ticketRepository.updateTicketStatus(
-                      ticketId: widget.ticketId,
-                      status: status['value'] as String,
+                ),
+                title: Text(status['label'] as String),
+                trailing: _ticket?.status == status['value']
+                    ? const Icon(Icons.check, color: Colors.green)
+                    : null,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _ticketRepository.updateTicketStatus(
+                    ticketId: widget.ticketId,
+                    status: status['value'] as String,
+                  );
+                  await _loadData();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Status berhasil diupdate!'),
+                        backgroundColor: Colors.green,
+                      ),
                     );
-                    await _loadData();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Status berhasil diupdate!'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    }
-                  },
-                )),
+                  }
+                },
+              ),
+            ),
           ],
         ),
       ),
@@ -171,169 +167,238 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
           children: [
             const Text(
               'Assign ke Helpdesk',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             if (_helpdeskList.isEmpty)
               const Center(child: Text('Tidak ada helpdesk tersedia'))
             else
-              ..._helpdeskList.map((helpdesk) => ListTile(
-                    leading: CircleAvatar(
-                      child: Text(
-                        (helpdesk['nama'] as String)[0].toUpperCase(),
-                      ),
-                    ),
-                    title: Text(helpdesk['nama'] as String),
-                    subtitle: Text(helpdesk['email'] as String),
-                    trailing: _ticket?.assignedTo == helpdesk['id']
-                        ? const Icon(Icons.check, color: Colors.green)
-                        : null,
-                    onTap: () async {
-                      Navigator.pop(context);
-                      await _ticketRepository.assignTicket(
-                        ticketId: widget.ticketId,
-                        helpdeskId: helpdesk['id'] as String,
-                      );
-                      await _loadData();
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Tiket di-assign ke ${helpdesk['nama']}',
-                            ),
-                            backgroundColor: Colors.green,
+              ..._helpdeskList.map(
+                (helpdesk) => ListTile(
+                  leading: CircleAvatar(
+                    child: Text((helpdesk['nama'] as String)[0].toUpperCase()),
+                  ),
+                  title: Text(helpdesk['nama'] as String),
+                  subtitle: Text(helpdesk['email'] as String),
+                  trailing: _ticket?.assignedTo == helpdesk['id']
+                      ? const Icon(Icons.check, color: Colors.green)
+                      : null,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _ticketRepository.assignTicket(
+                      ticketId: widget.ticketId,
+                      helpdeskId: helpdesk['id'] as String,
+                    );
+                    await _loadData();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Tiket di-assign ke ${helpdesk['nama']}',
                           ),
-                        );
-                      }
-                    },
-                  )),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
+  Future<void> _deleteTicket() async {
+    // Tampil dialog konfirmasi dulu
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Tiket'),
+        content: const Text(
+          'Apakah kamu yakin ingin menghapus tiket ini? '
+          'Semua komentar dan notifikasi terkait juga akan dihapus. '
+          'Aksi ini tidak bisa dibatalkan!',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await _ticketRepository.deleteTicket(widget.ticketId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tiket berhasil dihapus!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Balik ke halaman sebelumnya setelah hapus
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal hapus tiket: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'open': return Colors.blue;
-      case 'in_progress': return Colors.orange;
-      case 'resolved': return Colors.green;
-      case 'closed': return Colors.grey;
-      default: return Colors.blue;
+      case 'open':
+        return Colors.blue;
+      case 'in_progress':
+        return Colors.orange;
+      case 'resolved':
+        return Colors.green;
+      case 'closed':
+        return Colors.grey;
+      default:
+        return Colors.blue;
     }
   }
 
   String _getStatusLabel(String status) {
     switch (status) {
-      case 'open': return 'Open';
-      case 'in_progress': return 'In Progress';
-      case 'resolved': return 'Resolved';
-      case 'closed': return 'Closed';
-      default: return status;
+      case 'open':
+        return 'Open';
+      case 'in_progress':
+        return 'In Progress';
+      case 'resolved':
+        return 'Resolved';
+      case 'closed':
+        return 'Closed';
+      default:
+        return status;
     }
   }
 
   Widget _buildTrackingTimeline(String currentStatus) {
-  final steps = [
-    {'status': 'open', 'label': 'Open', 'desc': 'Tiket diterima'},
-    {'status': 'in_progress', 'label': 'In Progress', 'desc': 'Sedang ditangani'},
-    {'status': 'resolved', 'label': 'Resolved', 'desc': 'Masalah diselesaikan'},
-    {'status': 'closed', 'label': 'Closed', 'desc': 'Tiket ditutup'},
-  ];
+    final steps = [
+      {'status': 'open', 'label': 'Open', 'desc': 'Tiket diterima'},
+      {
+        'status': 'in_progress',
+        'label': 'In Progress',
+        'desc': 'Sedang ditangani',
+      },
+      {
+        'status': 'resolved',
+        'label': 'Resolved',
+        'desc': 'Masalah diselesaikan',
+      },
+      {'status': 'closed', 'label': 'Closed', 'desc': 'Tiket ditutup'},
+    ];
 
-  final statusOrder = ['open', 'in_progress', 'resolved', 'closed'];
-  final currentIndex = statusOrder.indexOf(currentStatus);
+    final statusOrder = ['open', 'in_progress', 'resolved', 'closed'];
+    final currentIndex = statusOrder.indexOf(currentStatus);
 
-  return Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-  borderRadius: BorderRadius.circular(12),
-  border: Border.all(color: Theme.of(context).dividerColor),
-),
-    child: Row(
-      children: List.generate(steps.length, (index) {
-        final step = steps[index];
-        final isDone = index <= currentIndex;
-        final isCurrent = index == currentIndex;
-        final isLast = index == steps.length - 1;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Row(
+        children: List.generate(steps.length, (index) {
+          final step = steps[index];
+          final isDone = index <= currentIndex;
+          final isCurrent = index == currentIndex;
+          final isLast = index == steps.length - 1;
 
-        return Expanded(
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    // Circle indicator
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: isDone
-                            ? const Color(0xFF2563EB)
-                            : Colors.grey.shade300,
-                        shape: BoxShape.circle,
-                        border: isCurrent
-                            ? Border.all(
-                                color: const Color(0xFF2563EB),
-                                width: 3,
-                              )
-                            : null,
-                      ),
-                      child: Icon(
-                        isDone ? Icons.check : Icons.circle,
-                        color: Colors.white,
-                        size: isDone ? 16 : 8,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    // Label
-                    Text(
-                      step['label']!,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: isCurrent
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: isDone
-                            ? const Color(0xFF2563EB)
-                            : Colors.grey.shade400,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    // Desc
-                    Text(
-                      step['desc']!,
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Colors.grey.shade400,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-              // Line connector
-              if (!isLast)
+          return Expanded(
+            child: Row(
+              children: [
                 Expanded(
-                  child: Container(
-                    height: 2,
-                    margin: const EdgeInsets.only(bottom: 32),
-                    color: index < currentIndex
-                        ? const Color(0xFF2563EB)
-                        : Colors.grey.shade300,
+                  child: Column(
+                    children: [
+                      // Circle indicator
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isDone
+                              ? const Color(0xFF2563EB)
+                              : Colors.grey.shade300,
+                          shape: BoxShape.circle,
+                          border: isCurrent
+                              ? Border.all(
+                                  color: const Color(0xFF2563EB),
+                                  width: 3,
+                                )
+                              : null,
+                        ),
+                        child: Icon(
+                          isDone ? Icons.check : Icons.circle,
+                          color: Colors.white,
+                          size: isDone ? 16 : 8,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Label
+                      Text(
+                        step['label']!,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: isCurrent
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          color: isDone
+                              ? const Color(0xFF2563EB)
+                              : Colors.grey.shade400,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      // Desc
+                      Text(
+                        step['desc']!,
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: Colors.grey.shade400,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
-            ],
-          ),
-        );
-      }),
-    ),
-  );
-}
+                // Line connector
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      margin: const EdgeInsets.only(bottom: 32),
+                      color: index < currentIndex
+                          ? const Color(0xFF2563EB)
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -347,284 +412,287 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
               tooltip: 'Update Status',
               onPressed: _showUpdateStatusDialog,
             ),
-            if (_userRole == 'admin')
+            if (_userRole == 'admin') ...[
               IconButton(
                 icon: const Icon(Icons.person_add_outlined),
                 tooltip: 'Assign Tiket',
                 onPressed: _showAssignDialog,
               ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Hapus Tiket',
+                onPressed: _ticket == null ? null : _deleteTicket,
+                color: Colors.red,
+              ),
+            ],
           ],
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _ticket == null
-              ? const Center(child: Text('Tiket tidak ditemukan'))
-              : Column(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+          ? const Center(child: Text('Tiket tidak ditemukan'))
+          : Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Status Badge
+                        Row(
                           children: [
-                            // Status Badge
-                            Row(
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getStatusColor(
+                                  _ticket!.status,
+                                ).withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                _getStatusLabel(_ticket!.status),
+                                style: TextStyle(
+                                  color: _getStatusColor(_ticket!.status),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // Tracking Timeline
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Tracking Status',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildTrackingTimeline(_ticket!.status),
+                        const SizedBox(height: 16),
+                        // Judul
+                        Text(
+                          _ticket!.judul,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Tanggal
+                        Text(
+                          'Dibuat: ${_ticket!.createdAt.day}/${_ticket!.createdAt.month}/${_ticket!.createdAt.year}',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Assigned To (kalau ada)
+                        if (_ticket!.assignedTo != null) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.purple.withOpacity(0.3),
+                              ),
+                            ),
+                            child: const Row(
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(_ticket!.status)
-                                        .withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    _getStatusLabel(_ticket!.status),
-                                    style: TextStyle(
-                                      color:
-                                          _getStatusColor(_ticket!.status),
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                Icon(
+                                  Icons.person_outline,
+                                  color: Colors.purple,
+                                  size: 16,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Sudah di-assign ke Helpdesk',
+                                  style: TextStyle(
+                                    color: Colors.purple,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-// Tracking Timeline
-const SizedBox(height: 16),
-const Text(
-  'Tracking Status',
-  style: TextStyle(fontWeight: FontWeight.w600),
-),
-const SizedBox(height: 12),
-_buildTrackingTimeline(_ticket!.status),
-const SizedBox(height: 16),
-                            // Judul
-                            Text(
-                              _ticket!.judul,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
 
-                            // Tanggal
-                            Text(
-                              'Dibuat: ${_ticket!.createdAt.day}/${_ticket!.createdAt.month}/${_ticket!.createdAt.year}',
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
+                        // Deskripsi
+                        const Text(
+                          'Deskripsi',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceVariant.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(_ticket!.deskripsi),
+                        ),
+                        const SizedBox(height: 16),
 
-                            // Assigned To (kalau ada)
-                            if (_ticket!.assignedTo != null) ...[
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.purple.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.purple.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(
-                                      Icons.person_outline,
-                                      color: Colors.purple,
-                                      size: 16,
-                                    ),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Sudah di-assign ke Helpdesk',
-                                      style: TextStyle(
-                                        color: Colors.purple,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-
-                            // Deskripsi
-                            const Text(
-                              'Deskripsi',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
+                        // Gambar kalau ada
+                        if (_ticket!.imageUrl != null) ...[
+                          const Text(
+                            'Lampiran',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              _ticket!.imageUrl!,
                               width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-  borderRadius: BorderRadius.circular(8),
-),
-                              child: Text(_ticket!.deskripsi),
+                              fit: BoxFit.cover,
+                              errorBuilder: (c, e, s) =>
+                                  const Text('Gambar tidak bisa dimuat'),
                             ),
-                            const SizedBox(height: 16),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
 
-                            // Gambar kalau ada
-                            if (_ticket!.imageUrl != null) ...[
-                              const Text(
-                                'Lampiran',
-                                style:
-                                    TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 8),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  _ticket!.imageUrl!,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (c, e, s) => const Text(
-                                    'Gambar tidak bisa dimuat',
+                        // Komentar
+                        Text(
+                          'Komentar (${_comments.length})',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (_comments.isEmpty)
+                          Text(
+                            'Belum ada komentar',
+                            style: TextStyle(color: Colors.grey.shade500),
+                          )
+                        else
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _comments.length,
+                            itemBuilder: (context, index) {
+                              final comment = _comments[index];
+                              final isMe =
+                                  comment.userId ==
+                                  Supabase.instance.client.auth.currentUser?.id;
+                              return Align(
+                                alignment: isMe
+                                    ? Alignment.centerRight
+                                    : Alignment.centerLeft,
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.all(12),
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                        MediaQuery.of(context).size.width *
+                                        0.75,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isMe
+                                        ? const Color(0xFF2563EB)
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.surfaceVariant,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        comment.userProfile?['nama'] ?? 'User',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12,
+                                          color: isMe
+                                              ? Colors.white70
+                                              : Colors.grey.shade600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        comment.isi,
+                                        style: TextStyle(
+                                          color: isMe
+                                              ? Colors.white
+                                              : Theme.of(
+                                                  context,
+                                                ).colorScheme.onSurface,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 16),
-                            ],
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
 
-                            // Komentar
-                            Text(
-                              'Komentar (${_comments.length})',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
+                // Input Komentar
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _commentController,
+                          decoration: InputDecoration(
+                            hintText: 'Tulis komentar...',
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                            const SizedBox(height: 8),
-                            if (_comments.isEmpty)
-                              Text(
-                                'Belum ada komentar',
-                                style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                ),
-                              )
-                            else
-                              ListView.builder(
-                                shrinkWrap: true,
-                                physics:
-                                    const NeverScrollableScrollPhysics(),
-                                itemCount: _comments.length,
-                                itemBuilder: (context, index) {
-                                  final comment = _comments[index];
-                                  final isMe = comment.userId ==
-                                      Supabase.instance.client.auth
-                                          .currentUser?.id;
-                                  return Align(
-                                    alignment: isMe
-                                        ? Alignment.centerRight
-                                        : Alignment.centerLeft,
-                                    child: Container(
-                                      margin: const EdgeInsets.only(
-                                        bottom: 8,
-                                      ),
-                                      padding: const EdgeInsets.all(12),
-                                      constraints: BoxConstraints(
-                                        maxWidth: MediaQuery.of(context)
-                                                .size
-                                                .width *
-                                            0.75,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isMe
-    ? const Color(0xFF2563EB)
-    : Theme.of(context).colorScheme.surfaceVariant,
-                                        borderRadius:
-                                            BorderRadius.circular(12),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            comment.userProfile?['nama'] ??
-                                                'User',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 12,
-                                              color: isMe
-                                                  ? Colors.white70
-                                                  : Colors.grey.shade600,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            comment.isi,
-                                            style: TextStyle(
-                                              color: isMe
-    ? Colors.white
-    : Theme.of(context).colorScheme.onSurface,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                          ],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-
-                    // Input Komentar
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).scaffoldBackgroundColor,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, -4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _commentController,
-                              decoration: InputDecoration(
-                                hintText: 'Tulis komentar...',
-                                contentPadding:
-                                    const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
+                      const SizedBox(width: 8),
+                      _isSendingComment
+                          ? const CircularProgressIndicator()
+                          : IconButton(
+                              onPressed: _sendComment,
+                              icon: const Icon(Icons.send),
+                              color: const Color(0xFF2563EB),
+                              style: IconButton.styleFrom(
+                                backgroundColor: const Color(
+                                  0xFF2563EB,
+                                ).withOpacity(0.1),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          _isSendingComment
-                              ? const CircularProgressIndicator()
-                              : IconButton(
-                                  onPressed: _sendComment,
-                                  icon: const Icon(Icons.send),
-                                  color: const Color(0xFF2563EB),
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: const Color(0xFF2563EB)
-                                        .withOpacity(0.1),
-                                  ),
-                                ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+              ],
+            ),
     );
   }
 }

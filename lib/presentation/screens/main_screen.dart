@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'ticket/list_ticket_screen.dart';
 import 'history/history_screen.dart';
+import 'tracking/tracking_ticket_screen.dart';
 import 'profile/profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -31,6 +32,7 @@ class _MainScreenState extends State<MainScreen> {
         const DashboardScreen(),
         const ListTicketScreen(),
         const HistoryScreen(),
+        const TrackingTicketScreen(),
         const ProfileScreen(),
       ];
 
@@ -58,6 +60,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(Icons.history_outlined),
             selectedIcon: Icon(Icons.history),
             label: 'Riwayat',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.track_changes_outlined),
+            selectedIcon: Icon(Icons.track_changes),
+            label: 'Tracking',
           ),
           const NavigationDestination(
             icon: Icon(Icons.person_outline),

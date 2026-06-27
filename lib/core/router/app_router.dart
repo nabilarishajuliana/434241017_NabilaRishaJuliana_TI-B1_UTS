@@ -8,6 +8,9 @@ import '../../presentation/screens/auth/reset_password_screen.dart';
 import '../../presentation/screens/ticket/create_ticket_screen.dart';
 import '../../presentation/screens/ticket/detail_ticket_screen.dart';
 import '../../presentation/screens/notification/notification_screen.dart';
+import '../../presentation/screens/admin/user_management_screen.dart';
+import '../../presentation/screens/settings/settings_screen.dart';
+import '../../presentation/screens/tracking/tracking_ticket_screen.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -48,8 +51,12 @@ class AppRouter {
         builder: (c, s) => const MainScreen(initialIndex: 2),
       ),
       GoRoute(
-        path: '/profile',
+        path: '/tracking',
         builder: (c, s) => const MainScreen(initialIndex: 3),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (c, s) => const MainScreen(initialIndex: 4),
       ),
       // Screen yang tidak pakai navbar
       GoRoute(
@@ -65,6 +72,11 @@ class AppRouter {
         builder: (c, s) =>
             DetailTicketScreen(ticketId: s.pathParameters['id']!),
       ),
+      GoRoute(
+        path: '/admin/users',
+        builder: (c, s) => const UserManagementScreen(),
+      ),
+      GoRoute(path: '/settings', builder: (c, s) => const SettingsScreen()),
     ],
   );
 }

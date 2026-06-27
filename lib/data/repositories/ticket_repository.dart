@@ -12,12 +12,10 @@ class TicketRepository {
     final response = await _supabase
         .from('tickets')
         .select('*, profiles!tickets_user_id_fkey(*)')
-        .eq('user_id', userId) 
+        .eq('user_id', userId)
         .order('created_at', ascending: false);
 
-    return (response as List)
-        .map((e) => TicketModel.fromJson(e))
-        .toList();
+    return (response as List).map((e) => TicketModel.fromJson(e)).toList();
   }
 
   // AMBIL SEMUA TIKET (ADMIN/HELPDESK)
@@ -27,24 +25,23 @@ class TicketRepository {
         .select('*, profiles!tickets_user_id_fkey(*)')
         .order('created_at', ascending: false);
 
-    return (response as List)
-        .map((e) => TicketModel.fromJson(e))
-        .toList();
+    return (response as List).map((e) => TicketModel.fromJson(e)).toList();
   }
 
   // AMBIL TIKET YANG DI-ASSIGN KE HELPDESK YANG LOGIN
-Future<List<TicketModel>> getAssignedTickets() async {
-  final userId = _supabase.auth.currentUser!.id;
-  final response = await _supabase
-      .from('tickets')
-      .select('*, profiles!tickets_user_id_fkey(*)')
-      .eq('assigned_to', userId) // hanya tiket yang assigned_to = id helpdesk ini
-      .order('created_at', ascending: false);
+  Future<List<TicketModel>> getAssignedTickets() async {
+    final userId = _supabase.auth.currentUser!.id;
+    final response = await _supabase
+        .from('tickets')
+        .select('*, profiles!tickets_user_id_fkey(*)')
+        .eq(
+          'assigned_to',
+          userId,
+        ) // hanya tiket yang assigned_to = id helpdesk ini
+        .order('created_at', ascending: false);
 
-  return (response as List)
-      .map((e) => TicketModel.fromJson(e))
-      .toList();
-}
+    return (response as List).map((e) => TicketModel.fromJson(e)).toList();
+  }
 
   // AMBIL DETAIL TIKET
   Future<TicketModel> getTicketDetail(String ticketId) async {
@@ -78,10 +75,13 @@ Future<List<TicketModel>> getAssignedTickets() async {
     required String ticketId,
     required String status,
   }) async {
-    await _supabase.from('tickets').update({
-      'status': status,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', ticketId);
+    await _supabase
+        .from('tickets')
+        .update({
+          'status': status,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', ticketId);
   }
 
   // ASSIGN TIKET KE HELPDESK
@@ -89,10 +89,13 @@ Future<List<TicketModel>> getAssignedTickets() async {
     required String ticketId,
     required String helpdeskId,
   }) async {
-    await _supabase.from('tickets').update({
-      'assigned_to': helpdeskId,
-      'updated_at': DateTime.now().toIso8601String(),
-    }).eq('id', ticketId);
+    await _supabase
+        .from('tickets')
+        .update({
+          'assigned_to': helpdeskId,
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', ticketId);
   }
 
   // UPLOAD GAMBAR
@@ -102,9 +105,7 @@ Future<List<TicketModel>> getAssignedTickets() async {
         .from('ticket-images')
         .uploadBinary(path, imageBytes);
 
-    final url = _supabase.storage
-        .from('ticket-images')
-        .getPublicUrl(path);
+    final url = _supabase.storage.from('ticket-images').getPublicUrl(path);
 
     return url;
   }
@@ -117,9 +118,7 @@ Future<List<TicketModel>> getAssignedTickets() async {
         .eq('ticket_id', ticketId)
         .order('created_at', ascending: true);
 
-    return (response as List)
-        .map((e) => CommentModel.fromJson(e))
-        .toList();
+    return (response as List).map((e) => CommentModel.fromJson(e)).toList();
   }
 
   // KIRIM KOMENTAR
@@ -143,5 +142,17 @@ Future<List<TicketModel>> getAssignedTickets() async {
         .eq('role', 'helpdesk');
 
     return (response as List).cast<Map<String, dynamic>>();
+  }
+
+  // DELETE TIKET
+  Future<void> deleteTicket(String ticketId) async {
+    // Hapus komentar dulu (karena ada foreign key)
+    await _supabase.from('comments').delete().eq('ticket_id', ticketId);
+
+    // Hapus notifikasi terkait tiket
+    await _supabase.from('notifications').delete().eq('ticket_id', ticketId);
+
+    // Baru hapus tiketnya
+    await _supabase.from('tickets').delete().eq('id', ticketId);
   }
 }
