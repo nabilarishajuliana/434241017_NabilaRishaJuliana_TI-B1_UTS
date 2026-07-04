@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/models/ticket_model.dart';
 import '../../../data/models/comment_model.dart';
 import '../../../data/repositories/ticket_repository.dart';
+import '../../../core/utils/user_role_helper.dart';
 
 class DetailTicketScreen extends StatefulWidget {
   final String ticketId;
@@ -22,18 +23,30 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
   bool _isLoading = true;
   bool _isSendingComment = false;
 
-  String get _userRole {
-    final user = Supabase.instance.client.auth.currentUser;
-    return user?.userMetadata?['role'] ?? 'user';
-  }
+  String _userRole = 'user';
 
   bool get _isAdminOrHelpdesk =>
       _userRole == 'admin' || _userRole == 'helpdesk';
 
+  String? get _currentUserId {
+    return Supabase.instance.client.auth.currentUser?.id;
+  }
+
+  bool get _isAssignedHelpdesk =>
+      _userRole == 'helpdesk' && _ticket?.assignedTo == _currentUserId;
+
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final role = await UserRoleHelper.getRole();
+    if (mounted) {
+      setState(() => _userRole = role);
+      _loadData();
+    }
   }
 
   @override
@@ -91,66 +104,106 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
     }
   }
 
-  void _showUpdateStatusDialog() {
-    final statuses = [
-      {'value': 'open', 'label': 'Open', 'color': Colors.blue},
-      {'value': 'in_progress', 'label': 'In Progress', 'color': Colors.orange},
-      {'value': 'resolved', 'label': 'Resolved', 'color': Colors.green},
-      {'value': 'closed', 'label': 'Closed', 'color': Colors.grey},
-    ];
-
-    showModalBottomSheet(
+  Future<void> _acceptTicket() async {
+    final confirm = await showDialog<bool>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Update Status Tiket',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            ...statuses.map(
-              (status) => ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: (status['color'] as Color).withOpacity(0.2),
-                  child: Icon(
-                    Icons.circle,
-                    color: status['color'] as Color,
-                    size: 12,
-                  ),
-                ),
-                title: Text(status['label'] as String),
-                trailing: _ticket?.status == status['value']
-                    ? const Icon(Icons.check, color: Colors.green)
-                    : null,
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _ticketRepository.updateTicketStatus(
-                    ticketId: widget.ticketId,
-                    status: status['value'] as String,
-                  );
-                  await _loadData();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Status berhasil diupdate!'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                },
-              ),
-            ),
-          ],
+      builder: (context) => AlertDialog(
+        title: const Text('Terima Tiket'),
+        content: const Text(
+          'Terima tiket ini? Status akan berubah menjadi Assigned '
+          'dan tiket siap untuk di-assign ke helpdesk.',
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Terima'),
+          ),
+        ],
       ),
     );
+
+    if (confirm != true) return;
+
+    try {
+      await _ticketRepository.acceptTicket(widget.ticketId);
+      await _loadData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tiket berhasil diterima!'),
+            backgroundColor: Colors.purple,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _finishTicket() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Selesaikan Tiket'),
+        content: const Text(
+          'Apakah pengerjaan tiket ini sudah selesai? '
+          'Status akan berubah menjadi Closed dan tiket akan ditutup.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Selesai'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await _ticketRepository.finishTicket(widget.ticketId);
+      await _loadData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tiket berhasil diselesaikan!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _showAssignDialog() {
@@ -210,7 +263,6 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
   }
 
   Future<void> _deleteTicket() async {
-    // Tampil dialog konfirmasi dulu
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -248,7 +300,6 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        // Balik ke halaman sebelumnya setelah hapus
         Navigator.pop(context);
       }
     } catch (e) {
@@ -267,10 +318,10 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
     switch (status) {
       case 'open':
         return Colors.blue;
+      case 'assign':
+        return Colors.purple;
       case 'in_progress':
         return Colors.orange;
-      case 'resolved':
-        return Colors.green;
       case 'closed':
         return Colors.grey;
       default:
@@ -282,10 +333,10 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
     switch (status) {
       case 'open':
         return 'Open';
+      case 'assign':
+        return 'Assigned';
       case 'in_progress':
         return 'In Progress';
-      case 'resolved':
-        return 'Resolved';
       case 'closed':
         return 'Closed';
       default:
@@ -295,21 +346,17 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
 
   Widget _buildTrackingTimeline(String currentStatus) {
     final steps = [
-      {'status': 'open', 'label': 'Open', 'desc': 'Tiket diterima'},
+      {'status': 'open', 'label': 'Open', 'desc': 'Tiket dibuat'},
+      {'status': 'assign', 'label': 'Assigned', 'desc': 'Diterima admin'},
       {
         'status': 'in_progress',
         'label': 'In Progress',
         'desc': 'Sedang ditangani',
       },
-      {
-        'status': 'resolved',
-        'label': 'Resolved',
-        'desc': 'Masalah diselesaikan',
-      },
-      {'status': 'closed', 'label': 'Closed', 'desc': 'Tiket ditutup'},
+      {'status': 'closed', 'label': 'Closed', 'desc': 'Tiket selesai'},
     ];
 
-    final statusOrder = ['open', 'in_progress', 'resolved', 'closed'];
+    final statusOrder = ['open', 'assign', 'in_progress', 'closed'];
     final currentIndex = statusOrder.indexOf(currentStatus);
 
     return Container(
@@ -406,25 +453,43 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
       appBar: AppBar(
         title: const Text('Detail Tiket'),
         actions: [
-          if (_isAdminOrHelpdesk) ...[
-            IconButton(
-              icon: const Icon(Icons.update),
-              tooltip: 'Update Status',
-              onPressed: _showUpdateStatusDialog,
-            ),
-            if (_userRole == 'admin') ...[
+          if (_ticket != null) ...[
+            // ADMIN: Terima Tiket (muncul saat status = open)
+            if (_userRole == 'admin' && _ticket!.status == 'open')
+              IconButton(
+                icon: const Icon(Icons.check_circle_outline),
+                tooltip: 'Terima Tiket',
+                onPressed: _acceptTicket,
+                color: Colors.purple,
+              ),
+
+            // ADMIN: Assign Tiket (muncul saat status = assign)
+            if (_userRole == 'admin' && _ticket!.status == 'assign')
               IconButton(
                 icon: const Icon(Icons.person_add_outlined),
-                tooltip: 'Assign Tiket',
+                tooltip: 'Assign ke Helpdesk',
                 onPressed: _showAssignDialog,
               ),
+
+            // HELPDESK: Selesai Tiket
+            // Muncul HANYA kalau helpdesk itu yang di-assign
+            // dan status = in_progress
+            if (_isAssignedHelpdesk && _ticket!.status == 'in_progress')
+              IconButton(
+                icon: const Icon(Icons.task_alt),
+                tooltip: 'Selesaikan Tiket',
+                onPressed: _finishTicket,
+                color: Colors.green,
+              ),
+
+            // ADMIN: Hapus Tiket
+            if (_userRole == 'admin')
               IconButton(
                 icon: const Icon(Icons.delete_outline),
                 tooltip: 'Hapus Tiket',
-                onPressed: _ticket == null ? null : _deleteTicket,
+                onPressed: _deleteTicket,
                 color: Colors.red,
               ),
-            ],
           ],
         ],
       ),
@@ -464,7 +529,6 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
                         // Tracking Timeline
                         const SizedBox(height: 16),
                         const Text(
@@ -474,6 +538,7 @@ class _DetailTicketScreenState extends State<DetailTicketScreen> {
                         const SizedBox(height: 12),
                         _buildTrackingTimeline(_ticket!.status),
                         const SizedBox(height: 16),
+
                         // Judul
                         Text(
                           _ticket!.judul,

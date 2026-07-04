@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/models/ticket_model.dart';
 import '../../../data/repositories/ticket_repository.dart';
+import '../../../core/utils/user_role_helper.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -16,15 +17,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<TicketModel> _tickets = [];
   bool _isLoading = true;
 
-  String get _userRole {
-    final user = Supabase.instance.client.auth.currentUser;
-    return user?.userMetadata?['role'] ?? 'user';
-  }
+  String _userRole = 'user';
 
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final role = await UserRoleHelper.getRole();
+    if (mounted) {
+      setState(() => _userRole = role);
+      _loadHistory();
+    }
   }
 
   Future<void> _loadHistory() async {
@@ -34,7 +40,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       if (_userRole == 'admin') {
         tickets = await _ticketRepository.getAllTickets();
       } else if (_userRole == 'helpdesk') {
-        tickets = await _ticketRepository.getAssignedTickets();
+        tickets = await _ticketRepository.getHelpdeskTickets();
       } else {
         tickets = await _ticketRepository.getMyTickets();
       }
@@ -56,10 +62,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     switch (status) {
       case 'open':
         return Colors.blue;
+      case 'assign':
+        return Colors.purple;
       case 'in_progress':
         return Colors.orange;
-      case 'resolved':
-        return Colors.green;
       case 'closed':
         return Colors.grey;
       default:
@@ -71,10 +77,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     switch (status) {
       case 'open':
         return 'Open';
+      case 'assign':
+        return 'Assigned';
       case 'in_progress':
         return 'In Progress';
-      case 'resolved':
-        return 'Resolved';
       case 'closed':
         return 'Closed';
       default:
@@ -86,12 +92,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     switch (status) {
       case 'open':
         return Icons.fiber_new;
+      case 'assign':
+        return Icons.person_pin;
       case 'in_progress':
         return Icons.sync;
-      case 'resolved':
-        return Icons.check_circle;
       case 'closed':
-        return Icons.cancel;
+        return Icons.check_circle;
       default:
         return Icons.circle;
     }

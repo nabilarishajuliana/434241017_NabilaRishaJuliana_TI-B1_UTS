@@ -3,8 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/ticket_repository.dart';
-import '../notification/notification_screen.dart';
 import '../../../data/repositories/notification_repository.dart';
+import '../notification/notification_screen.dart';
+import '../../../core/utils/user_role_helper.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -16,24 +17,29 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final _authRepository = AuthRepository();
   final _ticketRepository = TicketRepository();
-  int _unreadCount = 0;
   final _notificationRepository = NotificationRepository();
 
   Map<String, dynamic>? _userProfile;
   List<Map<String, dynamic>> _ticketStats = [];
   int _totalTickets = 0;
   bool _isLoading = true;
+  int _unreadCount = 0;
 
-  String get _userRole {
-    final user = Supabase.instance.client.auth.currentUser;
-    return user?.userMetadata?['role'] ?? 'user';
-  }
+  String _userRole = 'user';
 
   @override
   void initState() {
     super.initState();
-    _loadData();
-    _loadUnreadCount();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final role = await UserRoleHelper.getRole();
+    if (mounted) {
+      setState(() => _userRole = role);
+      _loadData();
+      _loadUnreadCount();
+    }
   }
 
   Future<void> _loadUnreadCount() async {
@@ -55,25 +61,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         // Admin lihat statistik semua tiket
         tickets = await _ticketRepository.getAllTickets();
       } else if (_userRole == 'helpdesk') {
-        // Helpdesk lihat statistik tiket yang di-assign ke dia
-        tickets = await _ticketRepository.getAssignedTickets();
+        // Helpdesk lihat statistik semua tiket yang related dengan dia
+        tickets = await _ticketRepository.getHelpdeskTickets();
       } else {
         // User lihat statistik tiket miliknya
         tickets = await _ticketRepository.getMyTickets();
       }
 
       // Hitung per status + hitung assigned
-      final stats = {'open': 0, 'in_progress': 0, 'resolved': 0, 'closed': 0};
-      int assignedCount = 0;
+      final stats = {'open': 0, 'assign': 0, 'in_progress': 0, 'closed': 0};
 
       for (final ticket in tickets) {
         final status = ticket.status;
         if (stats.containsKey(status)) {
           stats[status] = stats[status]! + 1;
-        }
-        // Hitung tiket yang sudah di-assign
-        if (ticket.assignedTo != null) {
-          assignedCount++;
         }
       }
 
@@ -89,7 +90,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           },
           {
             'label': 'Assigned',
-            'count': assignedCount,
+            'count': stats['assign'],
             'color': Colors.purple,
             'icon': Icons.person_pin,
           },
@@ -358,17 +359,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: const Color(0xFF2563EB),
                       onTap: () => context.push('/tickets'),
                     ),
-                    // track tiket
-                    const SizedBox(height: 12),
-                    _buildMenuCard(
-                      icon: Icons.track_changes,
-                      title: 'Tracking Tiket',
-                      subtitle: _userRole == 'user'
-                          ? 'Pantau progress tiket aktifmu'
-                          : 'Pantau semua tiket yang sedang berjalan',
-                      color: Colors.teal,
-                      onTap: () => context.push('/tracking'),
-                    ),
                     const SizedBox(height: 12),
                     _buildMenuCard(
                       icon: Icons.add_circle_outline,
@@ -379,15 +369,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     const SizedBox(height: 12),
                     _buildMenuCard(
-                      icon: Icons.person_outline,
-                      title: 'Profil Saya',
-                      subtitle: 'Lihat dan edit profil',
-                      color: Colors.purple,
-                      onTap: () => context.push('/profile'),
+                      icon: Icons.track_changes,
+                      title: 'Tracking Tiket',
+                      subtitle: _userRole == 'user'
+                          ? 'Pantau progress tiket aktifmu'
+                          : 'Pantau semua tiket yang sedang berjalan',
+                      color: Colors.teal,
+                      onTap: () => context.push('/tracking'),
                     ),
-                    // kelola pengguna
-                    const SizedBox(height: 12),
-                    if (_userRole == 'admin')
+
+                    if (_userRole == 'admin') ...[
+                      const SizedBox(height: 12),
                       _buildMenuCard(
                         icon: Icons.people_outline,
                         title: 'Kelola Pengguna',
@@ -395,6 +387,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: Colors.purple,
                         onTap: () => context.push('/admin/users'),
                       ),
+                    ],
                   ],
                 ),
               ),

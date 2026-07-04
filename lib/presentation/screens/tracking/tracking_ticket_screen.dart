@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/models/ticket_model.dart';
 import '../../../data/repositories/ticket_repository.dart';
+import '../../../core/utils/user_role_helper.dart';
 
 class TrackingTicketScreen extends StatefulWidget {
   const TrackingTicketScreen({super.key});
@@ -16,15 +17,20 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
   List<TicketModel> _tickets = [];
   bool _isLoading = true;
 
-  String get _userRole {
-    final user = Supabase.instance.client.auth.currentUser;
-    return user?.userMetadata?['role'] ?? 'user';
-  }
+  String _userRole = 'user';
 
   @override
   void initState() {
     super.initState();
-    _loadTickets();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    final role = await UserRoleHelper.getRole();
+    if (mounted) {
+      setState(() => _userRole = role);
+      _loadTickets();
+    }
   }
 
   Future<void> _loadTickets() async {
@@ -34,28 +40,22 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
       if (_userRole == 'admin') {
         // Admin lihat semua tiket yang belum closed
         final all = await _ticketRepository.getAllTickets();
-        tickets = all
-            .where((t) => t.status != 'closed')
-            .toList();
+        tickets = all.where((t) => t.status != 'closed').toList();
       } else if (_userRole == 'helpdesk') {
-        // Helpdesk lihat tiket yang di-assign ke dia
-        final assigned = await _ticketRepository.getAssignedTickets();
-        tickets = assigned
-            .where((t) => t.status != 'closed')
-            .toList();
+        // Helpdesk lihat tiket yang related dengan dia (buat + di-assign)
+        final helpdeskTickets = await _ticketRepository.getHelpdeskTickets();
+        tickets = helpdeskTickets.where((t) => t.status != 'closed').toList();
       } else {
         // User lihat tiket aktif miliknya
         final mine = await _ticketRepository.getMyTickets();
-        tickets = mine
-            .where((t) => t.status != 'closed')
-            .toList();
+        tickets = mine.where((t) => t.status != 'closed').toList();
       }
       setState(() => _tickets = tickets);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -64,21 +64,31 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'open': return Colors.blue;
-      case 'in_progress': return Colors.orange;
-      case 'resolved': return Colors.green;
-      case 'closed': return Colors.grey;
-      default: return Colors.blue;
+      case 'open':
+        return Colors.blue;
+      case 'assign':
+        return Colors.purple;
+      case 'in_progress':
+        return Colors.orange;
+      case 'closed':
+        return Colors.grey;
+      default:
+        return Colors.blue;
     }
   }
 
   String _getStatusLabel(String status) {
     switch (status) {
-      case 'open': return 'Open';
-      case 'in_progress': return 'In Progress';
-      case 'resolved': return 'Resolved';
-      case 'closed': return 'Closed';
-      default: return status;
+      case 'open':
+        return 'Open';
+      case 'assign':
+        return 'Assigned';
+      case 'in_progress':
+        return 'In Progress';
+      case 'closed':
+        return 'Closed';
+      default:
+        return status;
     }
   }
 
@@ -87,8 +97,14 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
       {
         'status': 'open',
         'label': 'Open',
-        'desc': 'Tiket diterima',
+        'desc': 'Tiket dibuat',
         'icon': Icons.fiber_new,
+      },
+      {
+        'status': 'assign',
+        'label': 'Assigned',
+        'desc': 'Diterima admin',
+        'icon': Icons.person_pin,
       },
       {
         'status': 'in_progress',
@@ -97,20 +113,14 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
         'icon': Icons.sync,
       },
       {
-        'status': 'resolved',
-        'label': 'Resolved',
-        'desc': 'Diselesaikan',
-        'icon': Icons.check_circle,
-      },
-      {
         'status': 'closed',
         'label': 'Closed',
-        'desc': 'Tiket ditutup',
-        'icon': Icons.cancel,
+        'desc': 'Selesai',
+        'icon': Icons.check_circle,
       },
     ];
 
-    final statusOrder = ['open', 'in_progress', 'resolved', 'closed'];
+    final statusOrder = ['open', 'assign', 'in_progress', 'closed'];
     final currentIndex = statusOrder.indexOf(currentStatus);
 
     return Row(
@@ -137,7 +147,7 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
                         shape: BoxShape.circle,
                         border: isCurrent
                             ? Border.all(
-                                color: const Color(0xFF2563EB),
+                                color: const Color.fromARGB(255, 248, 234, 51),
                                 width: 3,
                               )
                             : null,
@@ -195,17 +205,23 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
 
   String _getTrackingTitle() {
     switch (_userRole) {
-      case 'admin': return 'Tracking Semua Tiket Aktif';
-      case 'helpdesk': return 'Tracking Tiket Ditugaskan';
-      default: return 'Tracking Tiket Saya';
+      case 'admin':
+        return 'Tracking Semua Tiket Aktif';
+      case 'helpdesk':
+        return 'Tracking Tiket Ditugaskan';
+      default:
+        return 'Tracking Tiket Saya';
     }
   }
 
   String _getEmptyMessage() {
     switch (_userRole) {
-      case 'admin': return 'Tidak ada tiket aktif saat ini';
-      case 'helpdesk': return 'Tidak ada tiket yang sedang ditangani';
-      default: return 'Tidak ada tiket aktif saat ini';
+      case 'admin':
+        return 'Tidak ada tiket aktif saat ini';
+      case 'helpdesk':
+        return 'Tidak ada tiket yang sedang ditangani';
+      default:
+        return 'Tidak ada tiket aktif saat ini';
     }
   }
 
@@ -310,8 +326,7 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
                               final ticket = _tickets[index];
                               return GestureDetector(
                                 onTap: () async {
-                                  await context
-                                      .push('/tickets/${ticket.id}');
+                                  await context.push('/tickets/${ticket.id}');
                                   _loadTickets();
                                 },
                                 child: Container(
@@ -333,8 +348,7 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
                                           color: _getStatusColor(
                                             ticket.status,
                                           ).withOpacity(0.08),
-                                          borderRadius:
-                                              const BorderRadius.only(
+                                          borderRadius: const BorderRadius.only(
                                             topLeft: Radius.circular(12),
                                             topRight: Radius.circular(12),
                                           ),
@@ -345,9 +359,9 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
                                             Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 4,
-                                              ),
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: _getStatusColor(
                                                   ticket.status,
@@ -356,9 +370,7 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
                                                     BorderRadius.circular(4),
                                               ),
                                               child: Text(
-                                                _getStatusLabel(
-                                                  ticket.status,
-                                                ),
+                                                _getStatusLabel(ticket.status),
                                                 style: TextStyle(
                                                   color: _getStatusColor(
                                                     ticket.status,
@@ -378,8 +390,7 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
                                                   fontSize: 14,
                                                 ),
                                                 maxLines: 1,
-                                                overflow:
-                                                    TextOverflow.ellipsis,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                             // Arrow
@@ -412,8 +423,7 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
                                                   'Dibuat: ${ticket.createdAt.day}/${ticket.createdAt.month}/${ticket.createdAt.year}',
                                                   style: TextStyle(
                                                     fontSize: 11,
-                                                    color:
-                                                        Colors.grey.shade500,
+                                                    color: Colors.grey.shade500,
                                                   ),
                                                 ),
                                                 const Spacer(),
@@ -431,7 +441,8 @@ class _TrackingTicketScreenState extends State<TrackingTicketScreen> {
                                                     style: TextStyle(
                                                       fontSize: 11,
                                                       color: Colors
-                                                          .purple.shade300,
+                                                          .purple
+                                                          .shade300,
                                                     ),
                                                   ),
                                                 ],

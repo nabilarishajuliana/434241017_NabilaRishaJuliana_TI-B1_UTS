@@ -1,40 +1,74 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/utils/user_role_helper.dart';
 
 class AuthRepository {
   final _supabase = Supabase.instance.client;
 
-  // LOGIN
+  //LOGIN
   Future<AuthResponse> login({
     required String email,
     required String password,
   }) async {
-    // Login dulu ke Supabase Auth
     final response = await _supabase.auth.signInWithPassword(
       email: email,
       password: password,
     );
 
-    // Setelah login berhasil, cek apakah akun aktif
     if (response.user != null) {
       final profile = await _supabase
           .from('profiles')
-          .select('is_active')
+          .select('is_active, role')
           .eq('id', response.user!.id)
           .single();
 
       final isActive = profile['is_active'] ?? true;
 
       if (!isActive) {
-        // Langsung logout kalau tidak aktif
         await _supabase.auth.signOut();
         throw Exception(
           'Akun kamu telah dinonaktifkan. Hubungi admin untuk informasi lebih lanjut.',
         );
       }
+
+      // Simpan role ke local storage
+      await UserRoleHelper.saveRole(profile['role'] ?? 'user');
     }
 
     return response;
   }
+
+  // LOGIN (OLD)
+  // Future<AuthResponse> login({
+  //   required String email,
+  //   required String password,
+  // }) async {
+  //   // Login dulu ke Supabase Auth
+  //   final response = await _supabase.auth.signInWithPassword(
+  //     email: email,
+  //     password: password,
+  //   );
+
+  //   // Setelah login berhasil, cek apakah akun aktif
+  //   if (response.user != null) {
+  //     final profile = await _supabase
+  //         .from('profiles')
+  //         .select('is_active')
+  //         .eq('id', response.user!.id)
+  //         .single();
+
+  //     final isActive = profile['is_active'] ?? true;
+
+  //     if (!isActive) {
+  //       // Langsung logout kalau tidak aktif
+  //       await _supabase.auth.signOut();
+  //       throw Exception(
+  //         'Akun kamu telah dinonaktifkan. Hubungi admin untuk informasi lebih lanjut.',
+  //       );
+  //     }
+  //   }
+
+  //   return response;
+  // }
 
   // REGISTER
   Future<AuthResponse> register({
@@ -52,6 +86,7 @@ class AuthRepository {
 
   // LOGOUT
   Future<void> logout() async {
+    await UserRoleHelper.clearRole(); // clear role cache
     await _supabase.auth.signOut();
   }
 
@@ -98,5 +133,13 @@ class AuthRepository {
         .from('profiles')
         .update({'is_active': isActive})
         .eq('id', userId);
+  }
+
+  // UBAH ROLE USER
+  Future<void> updateUserRole({
+    required String userId,
+    required String newRole,
+  }) async {
+    await _supabase.from('profiles').update({'role': newRole}).eq('id', userId);
   }
 }

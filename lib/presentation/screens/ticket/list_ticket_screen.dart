@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../data/models/ticket_model.dart';
 import '../../../data/repositories/ticket_repository.dart';
+import '../../../core/utils/user_role_helper.dart';
 
 class ListTicketScreen extends StatefulWidget {
   const ListTicketScreen({super.key});
@@ -18,37 +19,54 @@ class _ListTicketScreenState extends State<ListTicketScreen> {
   bool _isLoading = true;
   String _selectedFilter = 'all';
 
-  String get _userRole {
-    final user = Supabase.instance.client.auth.currentUser;
-    return user?.userMetadata?['role'] ?? 'user';
-  }
+  String _userRole = 'user';
 
   final List<Map<String, String>> _filters = [
     {'value': 'all', 'label': 'Semua'},
     {'value': 'open', 'label': 'Open'},
+    {'value': 'assign', 'label': 'Assigned'},
     {'value': 'in_progress', 'label': 'In Progress'},
-    {'value': 'resolved', 'label': 'Resolved'},
     {'value': 'closed', 'label': 'Closed'},
   ];
 
   @override
   void initState() {
     super.initState();
-    _loadTickets();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    // Load role dulu
+    final role = await UserRoleHelper.getRole();
+    if (mounted) {
+      setState(() => _userRole = role);
+      // Baru load tiket setelah role dapat
+      _loadTickets();
+    }
   }
 
   Future<void> _loadTickets() async {
     setState(() => _isLoading = true);
     try {
       List<TicketModel> tickets;
+
+      // ===== DEBUG =====
+      print('===== DEBUG LIST TIKET =====');
+      print('User Role: $_userRole');
+      print('User ID: ${Supabase.instance.client.auth.currentUser?.id}');
+      // =================
+
       if (_userRole == 'admin') {
         // Admin tetap lihat semua tiket
         tickets = await _ticketRepository.getAllTickets();
       } else if (_userRole == 'helpdesk') {
-        // Helpdesk hanya lihat tiket yang di-assign ke dia
-        tickets = await _ticketRepository.getAssignedTickets();
+        // Helpdesk lihat tiket yang di-assign + tiket yang dia buat
+        print('Calling getHelpdeskTickets...');
+        tickets = await _ticketRepository.getHelpdeskTickets();
+        print('Got ${tickets.length} tickets');
       } else {
         // User lihat tiket miliknya sendiri
+        print('Calling getMyTickets (fallback ke user)');
         tickets = await _ticketRepository.getMyTickets();
       }
       setState(() {
@@ -56,6 +74,7 @@ class _ListTicketScreenState extends State<ListTicketScreen> {
         _applyFilter(_selectedFilter);
       });
     } catch (e) {
+      print('===== ERROR: $e =====');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -79,76 +98,14 @@ class _ListTicketScreenState extends State<ListTicketScreen> {
     });
   }
 
-  Widget _buildTicketCard(ticket) {
-  return Card(
-    margin: const EdgeInsets.only(bottom: 12),
-    child: ListTile(
-      contentPadding: const EdgeInsets.all(16),
-      title: Text(
-        ticket.judul,
-        style: const TextStyle(fontWeight: FontWeight.w600),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 4),
-          Text(
-            ticket.deskripsi,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(ticket.status).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  _getStatusLabel(ticket.status),
-                  style: TextStyle(
-                    color: _getStatusColor(ticket.status),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '${ticket.createdAt.day}/${ticket.createdAt.month}/${ticket.createdAt.year}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade500,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      onTap: () async {
-        await context.push('/tickets/${ticket.id}');
-        _loadTickets();
-      },
-    ),
-  );
-}
-
   Color _getStatusColor(String status) {
     switch (status) {
       case 'open':
         return Colors.blue;
+      case 'assign':
+        return Colors.purple;
       case 'in_progress':
         return Colors.orange;
-      case 'resolved':
-        return Colors.green;
       case 'closed':
         return Colors.grey;
       default:
@@ -160,15 +117,74 @@ class _ListTicketScreenState extends State<ListTicketScreen> {
     switch (status) {
       case 'open':
         return 'Open';
+      case 'assign':
+        return 'Assigned';
       case 'in_progress':
         return 'In Progress';
-      case 'resolved':
-        return 'Resolved';
       case 'closed':
         return 'Closed';
       default:
         return status;
     }
+  }
+
+  Widget _buildTicketCard(ticket) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        title: Text(
+          ticket.judul,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              ticket.deskripsi,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(ticket.status).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    _getStatusLabel(ticket.status),
+                    style: TextStyle(
+                      color: _getStatusColor(ticket.status),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${ticket.createdAt.day}/${ticket.createdAt.month}/${ticket.createdAt.year}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                ),
+              ],
+            ),
+          ],
+        ),
+        onTap: () async {
+          await context.push('/tickets/${ticket.id}');
+          _loadTickets();
+        },
+      ),
+    );
   }
 
   @override
@@ -265,7 +281,7 @@ class _ListTicketScreenState extends State<ListTicketScreen> {
                       itemBuilder: (context, index) {
                         final ticket = _filteredTickets[index];
 
-                        // Bungkus dengan Dismissible khusus untuk Admin
+                        // Swipe to delete khusus Admin
                         if (_userRole == 'admin') {
                           return Dismissible(
                             key: Key(ticket.id),

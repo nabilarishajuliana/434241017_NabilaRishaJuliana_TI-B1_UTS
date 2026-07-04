@@ -18,7 +18,7 @@ class TicketRepository {
     return (response as List).map((e) => TicketModel.fromJson(e)).toList();
   }
 
-  // AMBIL SEMUA TIKET (ADMIN/HELPDESK)
+  // AMBIL SEMUA TIKET (ADMIN)
   Future<List<TicketModel>> getAllTickets() async {
     final response = await _supabase
         .from('tickets')
@@ -70,19 +70,19 @@ class TicketRepository {
     });
   }
 
-  // UPDATE STATUS TIKET
-  Future<void> updateTicketStatus({
-    required String ticketId,
-    required String status,
-  }) async {
-    await _supabase
-        .from('tickets')
-        .update({
-          'status': status,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', ticketId);
-  }
+  // UPDATE STATUS TIKET (GADIPAKE LAGI)
+  // Future<void> updateTicketStatus({
+  //   required String ticketId,
+  //   required String status,
+  // }) async {
+  //   await _supabase
+  //       .from('tickets')
+  //       .update({
+  //         'status': status,
+  //         'updated_at': DateTime.now().toIso8601String(),
+  //       })
+  //       .eq('id', ticketId);
+  // }
 
   // ASSIGN TIKET KE HELPDESK
   Future<void> assignTicket({
@@ -93,10 +93,46 @@ class TicketRepository {
         .from('tickets')
         .update({
           'assigned_to': helpdeskId,
+          'status': 'in_progress', // otomatis ubah status jadi in_progress
           'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', ticketId);
   }
+
+  // ADMIN TERIMA TIKET (open -> assign)
+  Future<void> acceptTicket(String ticketId) async {
+    await _supabase
+        .from('tickets')
+        .update({
+          'status': 'assign',
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', ticketId);
+  }
+
+  // HELPDESK SELESAIKAN TIKET (in_progress -> closed)
+  Future<void> finishTicket(String ticketId) async {
+    await _supabase
+        .from('tickets')
+        .update({
+          'status': 'closed',
+          'updated_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', ticketId);
+  }
+
+  // Future<void> assignTicket({
+  //   required String ticketId,
+  //   required String helpdeskId,
+  // }) async {
+  //   await _supabase
+  //       .from('tickets')
+  //       .update({
+  //         'assigned_to': helpdeskId,
+  //         'updated_at': DateTime.now().toIso8601String(),
+  //       })
+  //       .eq('id', ticketId);
+  // }
 
   // UPLOAD GAMBAR
   Future<String?> uploadImage(Uint8List imageBytes, String fileName) async {
@@ -143,6 +179,21 @@ class TicketRepository {
 
     return (response as List).cast<Map<String, dynamic>>();
   }
+
+  // AMBIL TIKET UNTUK HELPDESK
+// Gabungan: tiket yang dia buat + tiket yang di-assign ke dia
+Future<List<TicketModel>> getHelpdeskTickets() async {
+  final userId = _supabase.auth.currentUser!.id;
+  final response = await _supabase
+      .from('tickets')
+      .select('*, profiles!tickets_user_id_fkey(*)')
+      .or('user_id.eq.$userId,assigned_to.eq.$userId')
+      .order('created_at', ascending: false);
+
+  return (response as List)
+      .map((e) => TicketModel.fromJson(e))
+      .toList();
+}
 
   // DELETE TIKET
   Future<void> deleteTicket(String ticketId) async {
